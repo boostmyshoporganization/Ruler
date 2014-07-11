@@ -228,6 +228,11 @@ class Context implements \ArrayAccess
         return array_keys($this->keys);
     }
 
+    public function values()
+    {
+        return $this->values;
+    }
+
     /**
      * Check whether a value is a Closure or invokable object.
      *

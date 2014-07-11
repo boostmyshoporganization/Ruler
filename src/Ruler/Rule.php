@@ -28,12 +28,13 @@ class Rule implements Proposition
      * Rule constructor.
      *
      * @param Proposition $condition Propositional condition for this Rule
-     * @param callback    $action    Action (callable) to take upon successful Rule execution (default: null)
+     * @param callback $action Action (callable) to take upon successful Rule execution (default: null)
      */
-    public function __construct(Proposition $condition, $action = null)
+    public function __construct(Proposition $condition, $actionTrue = null, $actionFalse = null)
     {
         $this->condition = $condition;
-        $this->action    = $action;
+        $this->actionTrue = $actionTrue;
+        $this->actionFalse = $actionFalse;
     }
 
     /**
@@ -54,17 +55,21 @@ class Rule implements Proposition
      * The Rule will be evaluated, and if successful, will execute its
      * $action callback.
      *
-     * @param  Context         $context Context with which to execute this Rule
+     * @param  Context $context Context with which to execute this Rule
      * @throws \LogicException
      */
     public function execute(Context $context)
     {
-        if ($this->evaluate($context) && isset($this->action)) {
-            if (!is_callable($this->action)) {
+        if ($this->evaluate($context) && isset($this->actionTrue)) {
+            if (!is_callable($this->actionTrue)) {
                 throw new \LogicException('Rule actions must be callable.');
             }
 
-            call_user_func($this->action);
+            return call_user_func($this->actionTrue, $context->values());
+        }
+
+        if ($this->actionFalse !== null) {
+            return call_user_func($this->actionFalse, $context->values());
         }
     }
 }
