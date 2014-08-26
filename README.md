@@ -3,7 +3,8 @@ Ruler
 
 Ruler is a simple stateless production rules engine for PHP 5.3+.
 
-[![Build Status](https://secure.travis-ci.org/bobthecow/Ruler.png?branch=master)](http://travis-ci.org/bobthecow/Ruler)
+[![Package version](http://img.shields.io/packagist/v/ruler/ruler.svg)](https://packagist.org/packages/ruler/ruler)
+[![Build status](http://img.shields.io/travis/bobthecow/Ruler/develop.svg)](http://travis-ci.org/bobthecow/Ruler)
 
 
 Ruler has an easy, straightforward DSL
@@ -12,8 +13,6 @@ Ruler has an easy, straightforward DSL
 ... provided by the RuleBuilder:
 
 ```php
-<?php
-
 $rb = new RuleBuilder;
 $rule = $rb->create(
     $rb->logicalAnd(
@@ -42,8 +41,6 @@ $rule->execute($context); // "Yay!"
 ... you can use it without a RuleBuilder:
 
 ```php
-<?php
-
 $actualNumPeople = new Variable('actualNumPeople');
 $rule = new Rule(
     new Operator\LogicalAnd(array(
@@ -75,8 +72,6 @@ Things you can do with your Ruler
 ### Compare things
 
 ```php
-<?php
-
 // These are Variables. They'll be replaced by terminal values during Rule evaluation.
 
 $a = $rb['a'];
@@ -100,8 +95,6 @@ $a->notSameAs($b);            // true if $a !== $b
 ### Combine things
 
 ```php
-<?php
-
 // Create a Rule with an $a == $b condition
 $aEqualsB = $rb->create($a->equalTo($b));
 
@@ -126,8 +119,6 @@ $eitherOne->evaluate($context);
 ### Combine more things
 
 ```php
-<?php
-
 $rb->logicalNot($aEqualsB);                  // The same as $aDoesNotEqualB :)
 $rb->logicalAnd($aEqualsB, $aDoesNotEqualB); // True if both conditions are true
 $rb->logicalOr($aEqualsB, $aDoesNotEqualB);  // True if either condition is true
@@ -139,11 +130,11 @@ $rb->logicalXor($aEqualsB, $aDoesNotEqualB); // True if only one condition is tr
 `evaluate()` a Rule with Context to figure out whether it is true.
 
 ```php
-<?php
-
-$context = new Context(array('userName', function() {
-    return isset($_SESSION['userName']) ? $_SESSION['userName'] : null;
-}));
+$context = new Context(array(
+    'userName' => function() {
+        return isset($_SESSION['userName']) ? $_SESSION['userName'] : null;
+    }
+));
 
 $userIsLoggedIn = $rb->create($rb['userName']->notEqualTo(null));
 
@@ -157,8 +148,6 @@ couple of lines of code.
 
 
 ```php
-<?php
-
 $hiJustin = $rb->create(
     $rb['userName']->equalTo('bobthecow'),
     function() {
@@ -219,8 +208,6 @@ static values, or even code for lazily evaluating the Variables needed by your
 Rules.
 
 ```php
-<?php
-
 $context = new Context;
 
 // Some static values...
@@ -254,6 +241,18 @@ for a shipping price calculator?
 > If the current User has placed 5 or more orders, but isn't "really annoying",
 > give 'em free shipping.
 
+```php
+$rb->create(
+    $rb->logicalAnd(
+        $rb['orderCount']->greaterThanOrEqualTo(5),
+        $rb['reallyAnnoyingUsers']->doesNotContain($rb['userName'])
+    ),
+    function() use ($shipManager, $context) {
+        $shipManager->giveFreeShippingTo($context['user']);
+    }
+);
+```
+
 
 Access variable properties
 --------------------------
@@ -264,7 +263,6 @@ Context Variable values. This can come in really handy.
 Say we wanted to log the current user's name if they are an administrator:
 
 ```php
-
 // Reusing our $context from the last example...
 
 // We'll define a few context variables for determining what roles a user has,
@@ -304,7 +302,7 @@ everything we might need to access in a rule, we can use VariableProperties, and
 their convenient RuleBuilder interface:
 
 ```php
-// We can skip over the Context Variable building above. We'll simply set our, 
+// We can skip over the Context Variable building above. We'll simply set our,
 // default roles on the VariableProperty itself, then go right to writing rules:
 
 $rb['user']['roles'] = array('anonymous');
@@ -333,6 +331,48 @@ If the Variable resolves to an array it will return:
 
 If none of the above are true, it will return the default value for this
 VariableProperty.
+
+
+Add your own Operators
+----------------------
+
+If none of the default Ruler Operators fit your needs, you can write your own! Just define
+additional operators like this:
+
+```php
+
+namespace My\Ruler\Operators;
+
+use Ruler\Context;
+use Ruler\Operator\VariableOperator;
+use Ruler\Proposition;
+use Ruler\Value;
+
+class ALotGreaterThan extends VariableOperator implements Proposition
+{
+    public function evaluate(Context $context)
+    {
+        list($left, $right) = $this->getOperands();
+        $value = $right->prepareValue($context)->getValue() * 10;
+
+        return $left->prepareValue($context)->greaterThan(new Value($value));
+    }
+
+    protected function getOperandCardinality()
+    {
+        return static::BINARY;
+    }
+}
+```
+
+Then you can use them with RuleBuilder like this:
+
+```php
+$rb->registerOperatorNamespace('My\Ruler\Operators');
+$rb->create(
+    $rb['a']->aLotGreaterThan(10);
+);
+```
 
 
 But that's not all...
